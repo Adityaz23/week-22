@@ -58,3 +58,88 @@ Result of this code ->
  PPID
 64462  week-22      390.1 00:21.59 4/4    0    14    993K   0B     608K   64462 
 here you can see that the process is using 390.1 CPU which means 4v cpu meand 4 cores of your CPU.
+
+In the end vertical scaling means that increasing the RAM or the size of the CPU to scale the application.
+
+Q. If js is single threaded language how does it perform asyc.
+Ans. Achieves asynchronous behavior through a combination of the Event Loop, Callback Queue, and Web APIs (in browsers) or Node.js APIs (in Node.js environments).
+
+the issues with the implementaiton of the vertical scaling is that ->
+1. Just ugly to do this, keep track of the processes up and down.
+2. Processes will have port conflicts you will have to run each process on a seprate port.
+
+const express = require("express");
+const cluster = require("cluster");
+const os = require("os");
+
+
+const totalCPUs = os.cpus().length;
+
+const port = 3000;
+
+if (cluster.isPrimary) {
+  console.log(`Number of CPUs is ${totalCPUs}`);
+  console.log(`Primary ${process.pid} is running`);
+
+  // Fork workers.
+  for (let i = 0; i < totalCPUs; i++) {
+    cluster.fork();
+  }
+
+  cluster.on("exit", (worker, code, signal) => {
+    console.log(`worker ${worker.process.pid} died`);
+    console.log("Let's fork another worker!");
+    cluster.fork();
+  });
+} else {
+  const app = express();
+  console.log(`Worker ${process.pid} started`);
+
+  app.get("/", (req, res) => {
+    res.send("Hello World!");
+  });
+
+  app.get("/api/:n", function (req, res) {
+    let n = parseInt(req.params.n);
+    let count = 0;
+
+    if (n > 5000000000) n = 5000000000;
+
+    for (let i = 0; i <= n; i++) {
+      count += i;
+    }
+
+    res.send(`Final count is ${count} ${process.pid}`);
+  });
+
+  app.listen(port, () => {
+    console.log(`App listening on port ${port}`);
+  });
+}
+
+
+this code is getting all our CPU cores tog et to work
+like totalCPus = os.cpus().length; is using all the cpus cores of our machine.
+
+node index.js
+Number of cluster is: 8 this is the number of the cores my pc have.
+Primary 73538
+Worker 73539 started 
+App listenting on 3000
+Worker 73541 started
+App listenting on 3000
+Worker 73543 started
+Worker 73540 started
+Worker 73544 started
+App listenting on 3000
+App listenting on 3000
+Worker 73545 started
+Worker 73546 started
+App listenting on 3000
+App listenting on 3000
+App listenting on 3000
+Worker 73542 started
+App listenting on 3000
+
+the main thing is that ki sare process chal rhe hai kyunki koi bhi port conflict didn't happen. 
+This makes out process more fast and node is more mutli core and faster.
